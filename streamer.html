@@ -16,7 +16,7 @@
     const startScreenShareBtn = document.getElementById('startScreenShare');
     const stopScreenShareBtn = document.getElementById('stopScreenShare');
 
-    const socket = new WebSocket('ws://localhost:8080');
+    const socket = new WebSocket('wss://web-streamer-1.onrender.com');
 
     socket.onopen = () => {
       status.textContent = 'Connected to server as streamer';

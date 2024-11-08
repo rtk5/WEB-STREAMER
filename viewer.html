@@ -13,7 +13,7 @@
   <script>
     const status = document.getElementById('status');
     const videoElement = document.getElementById('video');
-    const socket = new WebSocket('ws://localhost:8080');
+    const socket = new WebSocket('wss://web-streamer-1.onrender.com');
     const mediaSource = new MediaSource();
     videoElement.src = URL.createObjectURL(mediaSource);
 
