@@ -6,7 +6,9 @@ const clients = {
   viewers: new Set()
 };
 
-const wss = new WebSocket.Server({ port: 8080 });
+// Use dynamic port for Render
+const port = process.env.PORT || 8080;
+const wss = new WebSocket.Server({ port });
 
 wss.on('connection', (ws) => {
   console.log('New client connected');
@@ -54,4 +56,4 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log('WebSocket server running on ws://localhost:8080');
+console.log(`WebSocket server running on port ${port}`);
