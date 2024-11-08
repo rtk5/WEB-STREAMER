@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screen Sharing Streamer</title>
+</head>
+<body>
+  <h1>Screen Sharing Streamer</h1>
+  <p>Status: <span id="status">Connecting...</span></p>
+  <button id="startScreenShare">Start Screen Sharing</button>
+  <button id="stopScreenShare" style="display:none;">Stop Screen Sharing</button>
+
+  <script>
+    const status = document.getElementById('status');
+    const startScreenShareBtn = document.getElementById('startScreenShare');
+    const stopScreenShareBtn = document.getElementById('stopScreenShare');
+
+    const socket = new WebSocket('ws://localhost:8080');
+
+    socket.onopen = () => {
+      status.textContent = 'Connected to server as streamer';
+      socket.send(JSON.stringify({ type: 'streamer' }));
+    };
+
+    socket.onclose = () => {
+      status.textContent = 'Disconnected from server';
+    };
+
+    startScreenShareBtn.onclick = async () => {
+      try {
+        const mediaStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false
+        });
+
+        status.textContent = 'Screen sharing started...';
+        startScreenShareBtn.style.display = 'none';
+        stopScreenShareBtn.style.display = 'inline';
+
+        const videoTrack = mediaStream.getVideoTracks()[0];
+        const videoReader = new MediaRecorder(mediaStream, { mimeType: 'video/webm; codecs=vp8' });
+
+        videoReader.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            socket.send(event.data); // Send screen share data chunks
+          }
+        };
+
+        videoReader.start(100); // Send chunks every 100ms
+
+        videoTrack.onended = () => {
+          videoReader.stop();
+          socket.close();
+          status.textContent = 'Screen sharing ended';
+        };
+
+        stopScreenShareBtn.onclick = () => {
+          videoTrack.stop();
+          videoReader.stop();
+          socket.close();
+          status.textContent = 'Screen sharing stopped';
+          startScreenShareBtn.style.display = 'inline';
+          stopScreenShareBtn.style.display = 'none';
+        };
+      } catch (err) {
+        console.error('Error starting screen sharing:', err);
+        status.textContent = 'Failed to start screen sharing';
+      }
+    };
+  </script>
+</body>
+</html>
