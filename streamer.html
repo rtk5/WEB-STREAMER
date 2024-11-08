@@ -3,20 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Screen Sharing Streamer</title>
+  <title>Screen & Video Sharing Streamer</title>
 </head>
 <body>
-  <h1>Screen Sharing Streamer</h1>
+  <h1>Screen & Video Sharing Streamer</h1>
   <p>Status: <span id="status">Connecting...</span></p>
-  <button id="startScreenShare">Start Screen Sharing</button>
-  <button id="stopScreenShare" style="display:none;">Stop Screen Sharing</button>
+  <button id="startSharing">Start Screen & Video Sharing</button>
 
   <script>
     const status = document.getElementById('status');
-    const startScreenShareBtn = document.getElementById('startScreenShare');
-    const stopScreenShareBtn = document.getElementById('stopScreenShare');
+    const startSharingBtn = document.getElementById('startSharing');
 
-    const socket = new WebSocket('wss://web-streamer-1.onrender.com');
+    // Use the WebSocket URL of your Render service
+    const socket = new WebSocket('wss://your-service-name.onrender.com');
 
     socket.onopen = () => {
       status.textContent = 'Connected to server as streamer';
@@ -27,45 +26,55 @@
       status.textContent = 'Disconnected from server';
     };
 
-    startScreenShareBtn.onclick = async () => {
+    startSharingBtn.onclick = async () => {
       try {
-        const mediaStream = await navigator.mediaDevices.getDisplayMedia({
+        // Capture screen
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
-          audio: false
+          audio: false // Set to true if screen audio is needed
         });
 
-        status.textContent = 'Screen sharing started...';
-        startScreenShareBtn.style.display = 'none';
-        stopScreenShareBtn.style.display = 'inline';
+        // Capture webcam
+        const webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true // Set to true if microphone audio is needed
+        });
 
-        const videoTrack = mediaStream.getVideoTracks()[0];
-        const videoReader = new MediaRecorder(mediaStream, { mimeType: 'video/webm; codecs=vp8' });
+        // Combine both screen and webcam tracks into one stream
+        const combinedStream = new MediaStream([
+          ...screenStream.getVideoTracks(),
+          ...webcamStream.getVideoTracks()
+        ]);
 
-        videoReader.ondataavailable = (event) => {
+        status.textContent = 'Screen and video sharing started...';
+
+        // Set up MediaRecorder for sending video data chunks
+        const mediaRecorder = new MediaRecorder(combinedStream, {
+          mimeType: 'video/webm; codecs=vp8'
+        });
+
+        // Send data chunks as they become available
+        mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
-            socket.send(event.data); // Send screen share data chunks
+            socket.send(event.data); // Send screen and video data chunks
           }
         };
 
-        videoReader.start(100); // Send chunks every 100ms
+        // Start recording and sending data every 100ms
+        mediaRecorder.start(100);
 
-        videoTrack.onended = () => {
-          videoReader.stop();
-          socket.close();
-          status.textContent = 'Screen sharing ended';
-        };
+        // Stop sharing when either screen or webcam track ends
+        combinedStream.getTracks().forEach(track => {
+          track.onended = () => {
+            mediaRecorder.stop();
+            socket.close();
+            status.textContent = 'Screen and video sharing ended';
+          };
+        });
 
-        stopScreenShareBtn.onclick = () => {
-          videoTrack.stop();
-          videoReader.stop();
-          socket.close();
-          status.textContent = 'Screen sharing stopped';
-          startScreenShareBtn.style.display = 'inline';
-          stopScreenShareBtn.style.display = 'none';
-        };
       } catch (err) {
-        console.error('Error starting screen sharing:', err);
-        status.textContent = 'Failed to start screen sharing';
+        console.error('Error starting screen and video sharing:', err);
+        status.textContent = 'Failed to start screen and video sharing';
       }
     };
   </script>
